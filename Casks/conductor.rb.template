@@ -1,0 +1,20 @@
+cask "conductor" do
+  arch arm: "arm64", intel: "x86_64"
+
+  version "1.0.0"
+  sha256 arm: "REPLACE_WITH_ARM64_SHA256",
+         intel: "REPLACE_WITH_X86_64_SHA256"
+
+  url "https://github.com/hyfly233/Conductor/releases/download/v#{version}/Conductor-#{version}-#{arch}.zip"
+  name "Conductor"
+  desc "macOS controller for deterministic sing-box traffic routing"
+  homepage "https://github.com/hyfly233/Conductor"
+
+  app "Conductor.app"
+
+  zap trash: [
+    "~/Library/Preferences/com.hyfly.Conductor.plist",
+    "~/Library/Logs/Conductor",
+    "~/Library/Application Support/Conductor",
+  ]
+end

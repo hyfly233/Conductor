@@ -1,32 +1,18 @@
-//
-//  ConductorApp.swift
-//  Conductor
-//
-//  Created by fly hy on 9/4/26.
-//
-
 import SwiftUI
-import SwiftData
 
 @main
 struct ConductorApp: App {
-    var sharedModelContainer: ModelContainer = {
-        let schema = Schema([
-            Item.self,
-        ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-
-        do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
-        } catch {
-            fatalError("Could not create ModelContainer: \(error)")
-        }
-    }()
+    @StateObject private var controller = ConductorController()
 
     var body: some Scene {
-        WindowGroup {
-            ContentView()
+        MenuBarExtra {
+            MenuBarView(controller: controller)
+        } label: {
+            Label(controller.status.title, systemImage: controller.status.symbolName)
         }
-        .modelContainer(sharedModelContainer)
+
+        Window("Conductor", id: "control") {
+            ContentView(controller: controller)
+        }
     }
 }
