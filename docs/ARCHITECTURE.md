@@ -119,9 +119,11 @@ Debug 构建可通过显式开发设置使用 `/opt/homebrew/bin/sing-box` 或 `
 
 HTTP 端口使用 `type: "http"`。Conductor 保存端点、检查端口、生成配置和展示状态；VPN 工具负责自身登录、连接和重连。
 
-sing-box 没有用于连接上游的 `mixed` outbound。“混合端口”只存在于 Conductor 的输入模型中，由 `ProxyProtocolProbe` 对同一端点分别执行 HTTP CONNECT、SOCKS5 CONNECT 和 SOCKS5 UDP 能力探测，然后生成具体的 `http` 或 `socks` outbound。选择顺序为：SOCKS5 CONNECT 成功时优先 SOCKS5，否则使用已验证的 HTTP；两者均失败则拒绝保存。探测结果记录实际协议、TCP 可用性、UDP 可用性、时间和不含凭据的错误摘要。
+sing-box 没有用于连接上游的 `mixed` outbound。“混合端口”只存在于 Conductor 的输入模型中，对同一端点分别执行 HTTP CONNECT、SOCKS5 CONNECT 和 SOCKS5 UDP ASSOCIATE 握手探测，然后生成具体的 `http` 或 `socks` outbound。SOCKS5 CONNECT 成功时优先 SOCKS5，否则使用已验证的 HTTP；两者均失败则拒绝保存。当前结果只包含协议探测布尔值，不记录时间或细分失败原因；UDP 握手成功不保证数据转发成功。
 
 ### 2.5 VLESS URI 导入
+
+配置表单更新已有 HTTP/SOCKS5 outbound 时合并受管字段，保留未编辑的高级参数；按所选范围替换对应的简单域名、IP 或应用路径规则，保留其他范围及组合条件规则。删除出口仍按删除语义清理绑定。构建通过不代表真实 TUN 网络回归通过，验证记录见操作验收记录。
 
 `VLESSURIParser` 将用户粘贴的 URI 转换为内部节点模型。MVP 支持 VLESS Reality，解析 UUID、服务器、端口、flow、SNI、uTLS 指纹、Reality 公钥和 short ID。`AppBindingStore` 负责把节点绑定到 ChatGPT 进程和域名规则。
 
@@ -135,7 +137,7 @@ sing-box 没有用于连接上游的 `mixed` outbound。“混合端口”只存
 | 本地 SOCKS5/HTTP/混合端口工具 | `ProxyEndpoint` + `ProxyProtocolProbeResult` | 是；混合模式最终生成具体协议 |
 | OpenVPN/EasyConnect/aTrust | `CompanyVPNObservation` | 否 |
 
-`CompanyVPNObservation` 是一次检测快照，只保存接口、路由、DNS 和检测时间等证据。它不负责控制公司客户端，也不把易变化的 `utun` 编号作为永久身份。
+`CompanyVPNObservation` 是一次检测快照，当前保存进程检测结果、目标网段的路由输出、候选接口和检测时间；尚不采集 DNS 证据。它不负责控制公司客户端，也不把易变化的 `utun` 编号作为永久身份。
 
 ## 3. 网络数据路径
 
@@ -452,7 +454,7 @@ CompanyVPNState = disconnected | connected | uncertain | failed
 
 ### 8.2 公司 VPN 检测
 
-`CompanyVPNInspector` 通过只读系统信息收集候选 `utun`、IPv4/IPv6 路由、目标公司网段的实际接口和 DNS resolver。客户端名称与接口只有在有可靠证据时才关联；否则返回未知和候选列表。
+当前公司 VPN 检查通过进程匹配和对预设网段的路由查询提供只读证据；不采集 DNS resolver，也不确认客户端与 `utun` 的归属。实际连接和接口归属保持未知，需要用户结合客户端和系统路由核对。
 
 添加公司网段后，`ConfigurationStore` 更新 TUN 排除地址并执行配置检查。检测功能不执行公司 VPN 的启动、停止、登录或路由修改。
 
@@ -537,6 +539,8 @@ route -n get <公司内网IP>
 - Cask 升级应用后，`~/sing-box`、配置历史和偏好设置保持不变。
 
 ## 10. 已知限制
+
+2026-11-03 验证环境：当前 Debug 构建未包含 `Resources/bin/sing-box`，本机 Homebrew 链接指向 1.14.3，与项目固定 1.14.0 的要求不一致。尚不能据此声明固定运行时与端到端启动验证完成。操作逻辑回归使用 `scripts/OperationChecks.swift`，其中配置变更测试明确使用成功/失败命令替身，只证明原文件保护、备份和规则变更语义。
 
 - 没有 SOCKS5/HTTP 入口的公司 VPN 不能被 sing-box 作为普通 outbound 调用。
 - 本地代理端口型 VPN 只有在端口可连接且协议兼容时才能使用。

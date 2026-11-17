@@ -41,11 +41,28 @@ struct ProxyConfiguration: Identifiable, Equatable {
     let name: String
     let endpoint: String
     let bindingSummary: String
+    let sourceSummary: String?
     var health: HealthState = .unknown
+}
+
+struct MixedProxyProbeResult: Equatable, Sendable {
+    let httpAvailable: Bool
+    let socksTCPAvailable: Bool
+    let socksUDPAvailable: Bool
+
+    var selectedKind: String? {
+        if socksTCPAvailable { return "socks" }
+        if httpAvailable { return "http" }
+        return nil
+    }
+
+    var supportsUDP: Bool { selectedKind == "socks" && socksUDPAvailable }
 }
 
 enum ProxyRouteScope: String, CaseIterable, Identifiable {
     case domains = "指定域名"
+    case cidrs = "指定 IP/CIDR"
+    case applications = "指定应用"
     case remaining = "剩余流量"
 
     var id: Self { self }

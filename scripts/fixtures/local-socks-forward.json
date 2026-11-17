@@ -1,0 +1,11 @@
+{
+  "log": { "level": "warn" },
+  "inbounds": [
+    { "type": "http", "tag": "test-in", "listen": "127.0.0.1", "listen_port": 19374 },
+    { "type": "socks", "tag": "test-udp-in", "listen": "127.0.0.1", "listen_port": 19375 }
+  ],
+  "outbounds": [
+    { "type": "socks", "tag": "local-vpn", "server": "127.0.0.1", "server_port": 7890 }
+  ],
+  "route": { "final": "local-vpn" }
+}

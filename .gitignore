@@ -1,0 +1,8 @@
+.DS_Store
+build/
+dist/
+xcuserdata/
+
+graphify-out
+
+__pycache__
