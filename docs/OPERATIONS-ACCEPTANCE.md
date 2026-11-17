@@ -118,3 +118,13 @@ git diff --check
 已执行的验证：Debug 与 Release 构建后 `Contents/Resources/` 出现 `AppIcon.icns` 与 `Assets.car`；`Info.plist` 的 `CFBundleIconFile` 与 `CFBundleIconName` 均为 `AppIcon`；从 bundle 读取 `Assets.car` 得到 10 个位图（16×16 至 1024×1024）与实际 AccentColor 值；`NSWorkspace.icon(forFile:)` 在 LaunchServices 重新注册后返回新图标；Release ZIP 内含 `AppIcon.icns` 与 `Assets.car`；回归脚本与 `git diff --check` 通过。
 
 尚缺证据：最终 Dock/菜单栏的屏幕截图未能采集——本会话的屏幕录制授权也已失效（`screencapture -l` 返回 “could not create image from window”），因此“肉眼所见与 icns 一致”只有程序化读取证据。重新登录或重新授权后应补一次视觉确认。
+
+2026-11-17：补齐发布脚本。原脚本只做版本/架构/许可证检查，然后把运行时塞进已被 Xcode 签名的应用就不再重签，也没有 `SHA256SUMS`，更没有校验产物本身的完整性。实测确认两个缺陷：打包后 `codesign --verify --strict` 返回 `a sealed resource is missing or invalid`（退出码 1），而文档的发布结构要求 `SHA256SUMS`。
+
+现在的脚本行为：版本号从构建产物的 `CFBundleShortVersionString` 读取并用于 ZIP 命名，要求与 `Casks/conductor.rb.template` 的 `version` 完全一致，否则拒绝；打包前校验 `AppIcon.appiconset` 每个槽位都绑定了 `filename` 且文件存在；构建后确认 `AppIcon.icns` 与 `Assets.car` 存在且不早于本次构建；无 `CODE_SIGN_IDENTITY` 时改为 ad-hoc 重签，使签名封印有效；`NOTARY_PROFILE` 与 `CODE_SIGN_IDENTITY` 同时提供时执行 notarytool 提交、staple 与 validate，只给其中一个则拒绝；每个架构的摘要写入 `build/release/SHA256SUMS`，重复运行替换同名行并保留另一架构的行。
+
+顺带修正版本漂移：`MARKETING_VERSION` 由 `1.0` 改为 `1.0.0`，与应用包、ZIP 与 Cask 对齐；设置页不再硬编码 `"1.0"`，改读 `ConductorController.appVersion`。
+
+已执行的验证：正常路径完整打包成功，`AppIcon.icns`/`Assets.car`/`bin` 均在包内；`shasum -a 256 -c SHA256SUMS` 通过；解压后的 App `codesign --verify --deep --strict` 通过（此前失败）；重复运行后 `SHA256SUMS` 的 arm64 行被更新而保留的 x86_64 测试行未被删除；拒绝路径逐项验证为退出码 1 并给出可读原因——Cask 版本改为 1.0.1 时拒绝、10 个图标槽位解绑 `filename` 时拒绝、`NOTARY_PROFILE` 缺 `CODE_SIGN_IDENTITY` 时拒绝、二进制缺失/许可证缺失拒绝；Debug 构建与回归脚本通过。
+
+尚缺证据：Intel 架构产物、真实 Developer ID 签名、notarytool 公证与 staple、以及在干净机器上的 Cask 安装。这些都需要对应凭据或硬件，未在本次执行。

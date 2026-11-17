@@ -201,6 +201,10 @@ final class ConductorController: ObservableObject {
 
     static let minimumSupportedRuntimeVersion = "1.14.0"
 
+    static var appVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "未知"
+    }
+
     static func isSupportedSingBoxVersion(_ version: String) -> Bool {
         guard let candidate = versionNumbers(version), let floor = versionNumbers(minimumSupportedRuntimeVersion) else { return false }
         let count = max(candidate.count, floor.count)

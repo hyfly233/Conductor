@@ -460,7 +460,7 @@ CompanyVPNState = disconnected | connected | uncertain | failed
 
 ### 8.3 运行时完整性
 
-构建阶段将 sing-box 1.14.0 放入 `Conductor.app/Contents/Resources/bin/`，保留上游许可证和版权说明。发布流水线验证二进制版本、目标架构和 SHA-256，再对完整应用执行代码签名、公证和 stapling。
+构建阶段将 sing-box 1.14.0 放入 `Conductor.app/Contents/Resources/bin/`，保留上游许可证和版权说明。`scripts/package-release.sh` 负责版本、目标架构与图标资源校验，放入运行时后重新签名（无 `CODE_SIGN_IDENTITY` 时用 ad-hoc，保证封印有效），并写入 `SHA256SUMS`。设置 `NOTARY_PROFILE` 时脚本执行公证、staple 与 validate；未设置时公证和 stapling 仍为手工步骤。
 
 运行时检查顺序：
 
@@ -494,7 +494,7 @@ Cask 按 CPU 架构选择已签名、公证的固定版本发布物，校验 SHA
 GitHub Release / v1.0.0
 ├── Conductor-1.0.0-arm64.zip
 ├── Conductor-1.0.0-x86_64.zip
-├── SHA256SUMS
+├── SHA256SUMS          ← scripts/package-release.sh 逐架构累积写入
 └── release notes
 
 hyfly233/homebrew-conductor

@@ -314,7 +314,7 @@ OpenVPN                         已连接
 设置
 
 运行时
-Conductor 1.0             sing-box 1.14.0（内置）  ● 正常
+Conductor 1.0.0           sing-box 1.14.0（内置）  ● 正常
 应用内路径：…/Conductor.app/Contents/Resources/bin/sing-box
                                       [检查 sing-box]
 
@@ -332,7 +332,7 @@ Conductor 1.0             sing-box 1.14.0（内置）  ● 正常
 正式安装版本的运行时区域显示：
 
 ```text
-Conductor：1.0
+Conductor：1.0.0
 sing-box：1.14.4（内置）
 运行时状态：版本满足最低要求
 配置：~/sing-box/config.json

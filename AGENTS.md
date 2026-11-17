@@ -4,7 +4,7 @@ macOS SwiftUI app that supervises a **bundled, version-pinned sing-box** proxy r
 
 ## Project Overview
 
-- **Product**: `Conductor.app`, bundle id `com.hyfly.Conductor`, `MARKETING_VERSION = 1.0` (`project.pbxproj:411`); the ZIP, Cask and release tag all hardcode `1.0.0` (`scripts/package-release.sh:61`, `Casks/conductor.rb.template:4`). Nothing keeps the two in sync.
+- **Product**: `Conductor.app`, bundle id `com.hyfly.Conductor`, `MARKETING_VERSION = 1.0.0` (`project.pbxproj:411`). The release script derives the archive name from the built `CFBundleShortVersionString` and refuses to package when `Casks/conductor.rb.template` declares a different version, so the app, ZIP and tap cannot drift apart. `ConductorController.appVersion` reads it at runtime instead of any hard-coded string.
 - **Purpose**: run `sing-box` (TUN + DNS + VLESS Reality + SOCKS5/HTTP outbounds + route rules) so ChatGPT traffic goes through VLESS, company VPN CIDRs stay on routes owned by OpenVPN/EasyConnect/aTrust, everything else goes `direct`.
 - **Non-goals** (`docs/PRD.md:43-53`) — never implement: custom VLESS/Reality/TUN protocols, control of company VPN clients (start/stop/login/route changes), converting a port-less VPN into an outbound, controlling third-party proxy tools' logins, remote config upload/download, iOS/Windows/Linux, accounts/cloud sync.
 - **It is not a menubar-only app.** `MenuBarExtra` plus `Window("Conductor", id: "control")` with `.defaultLaunchBehavior(.presented)`; there is no `LSUIElement` and no `setActivationPolicy`, so it is a regular Dock app that also has a menubar item (`Conductor/ConductorApp.swift:3-22`).
@@ -127,7 +127,7 @@ CONDUCTOR_CHECK_RUNTIME=/path/to/sing-box-1.14.0 python3 scripts/check-auth-forw
 # Real VLESS egress (needs live network; reads ~/sing-box/config.json read-only)
 python3 scripts/check-vless-forward.py
 
-# Release packaging (refuses wrong version, wrong arch, missing LICENSE)
+# Release packaging (refuses wrong version/arch/licence/icon, writes SHA256SUMS)
 SING_BOX_BINARY=/opt/homebrew/bin/sing-box ./scripts/package-release.sh
 
 # Hygiene, per repo convention
@@ -222,7 +222,7 @@ func doThing(...) async {                       // async: file I/O, subprocess, 
 - **No package manager, no third-party dependencies** — `packageProductDependencies = ()` on all three targets. Adding one is a design change.
 - **`ENABLE_APP_SANDBOX = NO`, `ENABLE_HARDENED_RUNTIME = YES`**, Automatic signing, team `8MFNJGDG8Z`. No `.entitlements`, no hand-written `Info.plist` (`GENERATE_INFOPLIST_FILE = YES`), no `.xcconfig`. Do not add sandbox or entitlements: it breaks `~/sing-box`, `~/Library/Logs/Conductor`, and the `osascript` elevation path.
 - **Do not add a Copy Files or run-script phase to embed sing-box.** The app target stays `Sources/Frameworks/Resources`; only `scripts/package-release.sh:41-51` installs `Contents/Resources/bin/{sing-box,LICENSE}` (0755/0644) and re-verifies the copied binary reports the same version that passed the floor check. Signing order when `CODE_SIGN_IDENTITY` is set: nested binary first, then the app, then `codesign --verify --deep --strict`.
-- Packaging refusals: binary missing/not executable, LICENSE missing, `lipo -verify_arch "$(uname -m)"` fails, version unparseable or below `1.14.0`, or the bundled copy disagreeing with the checked binary. Output is `build/release/Conductor-1.0.0-$(uname -m).zip` plus a printed SHA-256; it does not notarize, staple, write `SHA256SUMS`, or cross-build — Intel artifacts come from an Intel host.
+- Packaging refusals (`scripts/package-release.sh`): binary missing/not executable, LICENSE missing, `lipo -verify_arch` failing, version unparseable or below `1.14.0`, bundled copy disagreeing with the checked binary, an `AppIcon.appiconset` whose slots are not all bound to existing `filename`s, a stale `AppIcon.icns`, a Cask version mismatch, or `NOTARY_PROFILE` without `CODE_SIGN_IDENTITY`. Output is `build/release/Conductor-<version>-$(uname -m).zip` plus a `SHA256SUMS` entry; without `CODE_SIGN_IDENTITY` it ad-hoc signs so the seal stays valid, and it still does not notarize unless `NOTARY_PROFILE` is set. No cross-build: Intel artifacts come from an Intel host.
 - Debug-only affordances: `selectDevelopmentRuntime()` + the "选择 sing-box（不低于 1.14.0）…" button, and the `/opt/homebrew/bin` → `/usr/local/bin` fallback in `findSingBox` (`:1093-1097`). Keep them behind `#if DEBUG`; Release has no way to point at a non-bundled runtime.
 - Never claim a distribution-ready artifact: local builds are Apple-Development-signed with `get-task-allow`, the nested binary may be ad-hoc, and notarization/stapling is manual (`docs/OPERATIONS-ACCEPTANCE.md:89` records `CSSMERR_TP_NOT_TRUSTED`).
 

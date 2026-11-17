@@ -691,7 +691,7 @@ private struct SettingsPage: View {
                 PageHeader(title: "设置", subtitle: "运行时、配置文件和历史版本") { EmptyView() }
                 GroupBox("运行时") {
                     VStack(alignment: .leading, spacing: 10) {
-                        LabeledContent("Conductor", value: "1.0")
+                        LabeledContent("Conductor", value: ConductorController.appVersion)
                         LabeledContent("sing-box", value: "\(controller.runtimeVersion)（\(controller.singBoxPath.contains(".app/Contents/Resources") ? "内置" : "开发环境")）")
                         LabeledContent("状态") { Label(controller.runtimeHealth.rawValue, systemImage: controller.runtimeHealth.symbol) }
                         Text(controller.singBoxPath).font(.caption.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
