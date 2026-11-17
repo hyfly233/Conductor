@@ -104,3 +104,17 @@ git diff --check
 尚缺证据：代理运行中的「退出」确认框，以及真实管理员授权下的界面响应速度。本机仅安装 sing-box 1.14.4，启动被固定版本门拒绝，因此上述两项无法在本次环境触发；`isRunning` 分支与 `stop()` 使用同一判据，但未实际点击过运行态退出。
 
 顺带修正一处交互缺陷：失败文本原本不含 `error`/`fatal`/`warning`，错误摘要入口跳到 Warning/Error 筛选后必然显示「没有匹配的日志」。现在所有失败日志统一带 `ERROR` 前缀，运行时版本不匹配也记入日志。
+
+2026-11-17：运行时版本门由“精确匹配 1.14.0”改为“最低版本 1.14.0”。新增单一判据 `ConductorController.isSupportedSingBoxVersion`（`ConductorController.swift:204`），DEBUG 选择器、`checkRuntime`、`requireSupportedRuntime` 三处共用；只接受纯数字与点号构成的版本（`1.14.0-beta.1`、`1.14.0+build`、`garbage` 均拒绝），高于基线一律放行。打包脚本用 `sort -V` 实现同一规则，并对无法解析的版本单独拒绝；内置副本比对改为与该次校验通过的版本一致，不再硬编码。
+
+已执行的验证：Debug 构建通过；回归脚本新增 19 条版本判据断言（8 个接受、11 个拒绝，含预发布与构建元数据）以及一条“低于基线禁止启动”的真实用例（用 `1.13.9` 替身运行 `checkRuntime` 与 `start`，断言 `.warning`、`.configurationError` 与不进入运行态）；`CONDUCTOR_CHECK_RUNTIME=/opt/homebrew/bin/sing-box`（真实 1.14.4）通过全部真实检查——TUN 排除、IP/CIDR 与应用绑定、VLESS 导入、HTTP 默认出口与 UDP/443 reject、历史恢复；`scripts/package-release.sh` 用 1.14.4 完成构建与打包并输出 SHA-256；门控矩阵逐一核对 `1.13.9`/`1.14.0`/`1.14.4`/`1.15.0`/`2.0.0` 放行、预发布与非法串拒绝。
+
+尚缺证据：真实 App 内点击验证未能在本次完成，辅助访问授权在会话中失效（`AXIsProcessTrusted()` 返回 false），因此“设置页显示 1.14.4 且状态为版本满足最低要求”只有构建与单元级证据。高于基线的版本允许运行，但不同版本的路由与 DNS 行为差异未做回归；发布物仍打包 1.14.0，非 1.14.0 版本运行不代表发布基线已验收。
+
+2026-11-17：补齐应用图标。此前 `AppIcon.appiconset/Contents.json` 声明了 10 个尺寸槽位但没有任何 `filename`，`AccentColor` 也只有空 `idiom` 而无颜色值，因此 `actool` 虽然执行却产出空的 `Contents/Resources/`，应用在 Dock 与 Finder 中显示通用文档图标，配置卡片上 `.tint` 也因此无主题色。
+
+现在由单一 1024 px 母版生成 16/32/128/256/512 的 1x 与 2x 共 10 张 PNG（CoreGraphics 绘制，未引入依赖），`Contents.json` 逐项绑定 `filename`；`AccentColor` 补充 sRGB 值 0.259/0.216/0.627，与图标底色一致。
+
+已执行的验证：Debug 与 Release 构建后 `Contents/Resources/` 出现 `AppIcon.icns` 与 `Assets.car`；`Info.plist` 的 `CFBundleIconFile` 与 `CFBundleIconName` 均为 `AppIcon`；从 bundle 读取 `Assets.car` 得到 10 个位图（16×16 至 1024×1024）与实际 AccentColor 值；`NSWorkspace.icon(forFile:)` 在 LaunchServices 重新注册后返回新图标；Release ZIP 内含 `AppIcon.icns` 与 `Assets.car`；回归脚本与 `git diff --check` 通过。
+
+尚缺证据：最终 Dock/菜单栏的屏幕截图未能采集——本会话的屏幕录制授权也已失效（`screencapture -l` 返回 “could not create image from window”），因此“肉眼所见与 icns 一致”只有程序化读取证据。重新登录或重新授权后应补一次视觉确认。

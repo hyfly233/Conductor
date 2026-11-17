@@ -696,7 +696,7 @@ private struct SettingsPage: View {
                         LabeledContent("状态") { Label(controller.runtimeHealth.rawValue, systemImage: controller.runtimeHealth.symbol) }
                         Text(controller.singBoxPath).font(.caption.monospaced()).foregroundStyle(.secondary).textSelection(.enabled)
 #if DEBUG
-                        Button("选择 sing-box 1.14.0…") { Task { await controller.selectDevelopmentRuntime() } }
+                        Button("选择 sing-box（不低于 \(ConductorController.minimumSupportedRuntimeVersion)）…") { Task { await controller.selectDevelopmentRuntime() } }
                             .disabled(controller.isRunning || controller.isBusy)
 #endif
                         HStack {

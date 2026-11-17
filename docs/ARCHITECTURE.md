@@ -87,7 +87,7 @@ ConfigurationHistoryStore
 
 ### 2.3 sing-box
 
-Conductor 1.0 固定内置 sing-box 1.14.0，并将其作为子进程运行：
+Conductor 1.0 内置 sing-box 1.14.0 作为发布基线，并将其作为子进程运行：
 
 ```bash
 Conductor.app/Contents/Resources/bin/sing-box check -c <config>
@@ -100,7 +100,7 @@ sudo Conductor.app/Contents/Resources/bin/sing-box run -c <config>
 Conductor.app/Contents/Resources/bin/sing-box
 ```
 
-Apple Silicon 和 Intel 发布物分别包含对应架构的 sing-box 1.14.0。应用启动前执行 `sing-box version` 并校验精确版本；配置检查和正式运行必须复用已校验的同一个 URL。
+Apple Silicon 和 Intel 发布物分别包含对应架构的 sing-box 1.14.0。应用启动前执行 `sing-box version` 并校验版本不低于 1.14.0；配置检查和正式运行必须复用已校验的同一个 URL。
 
 Debug 构建可通过显式开发设置使用 `/opt/homebrew/bin/sing-box` 或 `/usr/local/bin/sing-box`，但该能力不进入正式发布默认路径，也不能在内置运行时失效时静默回退。
 
@@ -471,8 +471,8 @@ CompanyVPNState = disconnected | connected | uncertain | failed
   ↓
 执行 sing-box version
   ↓
-精确匹配 1.14.0
-  ├─ 失败 → 禁止 check/run，提示重新安装
+版本不低于 1.14.0（仅接受纯数字与点号）
+  ├─ 失败 → 禁止 check/run，提示重新安装或升级
   └─ 成功 → 缓存本次运行使用的 URL
 ```
 
@@ -549,7 +549,7 @@ route -n get <公司内网IP>
 - 多个 macOS VPN 网络扩展的路由优先级由系统和客户端共同决定。
 - `DIRECT` 只表示 sing-box 不使用代理节点，不保证绕过系统 VPN。
 - IPv6、QUIC 和应用辅助进程可能需要额外规则。
-- sing-box 固定为 1.14.0；未来升级仍可能带来配置迁移，必须随 Conductor 发布并在启动前运行 `check`。
+- 运行时最低版本为 1.14.0；更高版本可以运行，但升级仍可能带来配置迁移，必须重新执行 `check` 与回归。
 - 正式版不回退到系统 PATH 中的 sing-box，因此内置运行时损坏时代理不可启动。
 
 ## 11. 实施顺序

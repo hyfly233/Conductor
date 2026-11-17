@@ -1,7 +1,7 @@
 #!/bin/zsh
 set -euo pipefail
 
-readonly expected_sing_box_version="1.14.0"
+readonly minimum_sing_box_version="1.14.0"
 readonly project_root="${0:A:h:h}"
 readonly configuration="Release"
 readonly derived_data="${project_root}/build/DerivedData"
@@ -25,8 +25,12 @@ if ! lipo -verify_arch "$(uname -m)" "${sing_box_source}"; then
 fi
 
 actual_version="$(${sing_box_source} version | head -n 1 | sed 's/^sing-box version //')"
-if [[ "${actual_version}" != "${expected_sing_box_version}" ]]; then
-  print -u2 "expected sing-box ${expected_sing_box_version}, got ${actual_version}"
+if [[ ! "${actual_version}" =~ ^[0-9]+(\.[0-9]+)*$ ]]; then
+  print -u2 "unrecognised sing-box version: ${actual_version}"
+  exit 1
+fi
+if [[ "$(printf '%s\n%s\n' "${minimum_sing_box_version}" "${actual_version}" | sort -V | head -n 1)" != "${minimum_sing_box_version}" ]]; then
+  print -u2 "sing-box ${minimum_sing_box_version} or newer is required, got ${actual_version}"
   exit 1
 fi
 
@@ -45,8 +49,8 @@ install -m 755 "${sing_box_source}" "${runtime_directory}/sing-box"
 install -m 644 "${sing_box_license}" "${runtime_directory}/LICENSE"
 
 bundled_version="$(${runtime_directory}/sing-box version | head -n 1 | sed 's/^sing-box version //')"
-if [[ "${bundled_version}" != "${expected_sing_box_version}" ]]; then
-  print -u2 "bundled sing-box version verification failed"
+if [[ "${bundled_version}" != "${actual_version}" ]]; then
+  print -u2 "bundled sing-box version verification failed: ${bundled_version} != ${actual_version}"
   exit 1
 fi
 

@@ -1,6 +1,6 @@
 # Conductor 发布
 
-Conductor 1.0.0 固定使用 sing-box 1.14.0。发布脚本会拒绝其他版本。
+Conductor 1.0.0 打包 sing-box 1.14.0 作为基线。发布脚本要求提供的二进制版本不低于 1.14.0，低于则拒绝；版本号必须由纯数字与点号构成，预发布与构建元数据后缀一律拒绝。
 
 ```bash
 SING_BOX_BINARY=/opt/homebrew/bin/sing-box ./scripts/package-release.sh

@@ -60,7 +60,7 @@ final class ConductorController: ObservableObject {
 #if DEBUG
         guard !isRunning, !isBusy else { return }
         let panel = NSOpenPanel()
-        panel.title = "选择 sing-box 1.14.0 可执行文件"
+        panel.title = "选择 sing-box 可执行文件（不低于 \(Self.minimumSupportedRuntimeVersion)）"
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
         guard panel.runModal() == .OK, let url = panel.url else { return }
@@ -71,11 +71,13 @@ final class ConductorController: ObservableObject {
         status = .validating
         do {
             let result = try await runSystemProcess(executable: url.path, arguments: ["version"])
-            guard result.status == 0, result.output.split(separator: "\n").first == "sing-box version 1.14.0" else {
-                throw ConductorError.commandFailed("请选择 sing-box 1.14.0，当前运行时未改变")
+            let firstLine = result.output.split(separator: "\n").first.map(String.init) ?? "未知版本"
+            let version = firstLine.replacingOccurrences(of: "sing-box version ", with: "")
+            guard result.status == 0, Self.isSupportedSingBoxVersion(version) else {
+                throw ConductorError.commandFailed("请选择不低于 \(Self.minimumSupportedRuntimeVersion) 的 sing-box，当前运行时未改变")
             }
             singBoxPath = url.path
-            runtimeVersion = "1.14.0"
+            runtimeVersion = version
             runtimeHealth = .healthy
             lastError = nil
             status = .stopped
@@ -197,6 +199,30 @@ final class ConductorController: ObservableObject {
         if let message, lastError == message { lastError = nil }
     }
 
+    static let minimumSupportedRuntimeVersion = "1.14.0"
+
+    static func isSupportedSingBoxVersion(_ version: String) -> Bool {
+        guard let candidate = versionNumbers(version), let floor = versionNumbers(minimumSupportedRuntimeVersion) else { return false }
+        let count = max(candidate.count, floor.count)
+        for index in 0..<count {
+            let lhs = index < candidate.count ? candidate[index] : 0
+            let rhs = index < floor.count ? floor[index] : 0
+            if lhs != rhs { return lhs > rhs }
+        }
+        return true
+    }
+
+    private static func versionNumbers(_ version: String) -> [Int]? {
+        let trimmed = version.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        var numbers: [Int] = []
+        for part in trimmed.split(separator: ".", omittingEmptySubsequences: false) {
+            guard !part.isEmpty, part.allSatisfy(\.isNumber), let value = Int(part) else { return nil }
+            numbers.append(value)
+        }
+        return numbers
+    }
+
     func checkRuntime() async {
         guard runtimeHealth != .checking else { return }
         runtimeHealth = .checking
@@ -204,10 +230,10 @@ final class ConductorController: ObservableObject {
             let result = try await runProcess(arguments: ["version"])
             let firstLine = result.output.split(separator: "\n").first.map(String.init) ?? "未知版本"
             runtimeVersion = firstLine.replacingOccurrences(of: "sing-box version ", with: "")
-            runtimeHealth = result.status == 0 && runtimeVersion == "1.14.0" ? .healthy : .warning
+            runtimeHealth = result.status == 0 && Self.isSupportedSingBoxVersion(runtimeVersion) ? .healthy : .warning
             appendLog("\(result.output.trimmingCharacters(in: .whitespacesAndNewlines))\n")
             if runtimeHealth == .warning {
-                let message = "当前 sing-box 为 \(runtimeVersion)，Conductor 1.0 固定支持 1.14.0"
+                let message = "当前 sing-box 为 \(runtimeVersion)，低于 Conductor 1.0 要求的最低版本 \(Self.minimumSupportedRuntimeVersion)"
                 lastError = message
                 appendLog("ERROR \(message)\n")
             } else {
@@ -916,9 +942,9 @@ final class ConductorController: ObservableObject {
         let result = try await runProcess(arguments: ["version"])
         let version = result.output.split(separator: "\n").first.map(String.init)?.replacingOccurrences(of: "sing-box version ", with: "") ?? "未知"
         runtimeVersion = version
-        guard result.status == 0, version == "1.14.0" else {
+        guard result.status == 0, Self.isSupportedSingBoxVersion(version) else {
             runtimeHealth = .failed
-            throw ConductorError.commandFailed("当前 sing-box 为 \(version)，Conductor 1.0 仅支持 1.14.0")
+            throw ConductorError.commandFailed("当前 sing-box 为 \(version)，低于 Conductor 1.0 要求的最低版本 \(Self.minimumSupportedRuntimeVersion)")
         }
         runtimeHealth = .healthy
     }

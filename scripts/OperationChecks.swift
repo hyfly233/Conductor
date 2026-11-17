@@ -17,6 +17,13 @@ struct OperationChecks {
         precondition(ConductorController.logLines(sampleLog, filter: .errors, search: "") == ["23:56:45 ERROR vpn-proxy-01 unavailable"])
         precondition(ConductorController.logLines(sampleLog, filter: .all, search: "OUTBOUND").count == 1)
         precondition(ConductorController.logLines(sampleLog, filter: .errors, search: "chatgpt").isEmpty)
+        precondition(ConductorController.minimumSupportedRuntimeVersion == "1.14.0")
+        for accepted in ["1.14.0", "1.14.4", "1.15.0", "1.100.0", "2.0.0", "1.14", "1.14.0.0"] {
+            precondition(ConductorController.isSupportedSingBoxVersion(accepted), accepted)
+        }
+        for rejected in ["1.13.9", "1.13", "1.0.0", "0.9.99", "1.14.0-beta.1", "1.14.0-rc.1", "1.14.0+build", "未知", "", "garbage", "1.x.0"] {
+            precondition(!ConductorController.isSupportedSingBoxVersion(rejected), rejected)
+        }
         precondition(ConductorController.companyVPNState(processStatus: 0, hasTunnelRoute: false) == .uncertain)
         precondition(ConductorController.companyVPNState(processStatus: 0, hasTunnelRoute: true) == .uncertain)
         precondition(ConductorController.companyVPNState(processStatus: 1, hasTunnelRoute: false) == .disconnected)
@@ -81,6 +88,17 @@ struct OperationChecks {
         precondition(ConductorController.livePID(in: pidURL) == nil)
         try "not-a-pid".write(to: pidURL, atomically: true, encoding: .utf8)
         precondition(ConductorController.livePID(in: pidURL) == nil)
+        let oldRuntime = directory.appendingPathComponent("old-sing-box")
+        try "#!/bin/sh\necho \"sing-box version 1.13.9\"\nexit 0\n".write(to: oldRuntime, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: oldRuntime.path)
+        let tooOld = ConductorController(configPath: configURL.path, singBoxPath: oldRuntime.path, pidFileURL: pidURL)
+        await tooOld.checkRuntime()
+        precondition(tooOld.runtimeHealth == .warning)
+        precondition(tooOld.lastError?.contains("低于") == true, tooOld.lastError ?? "")
+        await tooOld.start()
+        precondition(tooOld.status == .configurationError, "\(tooOld.status)")
+        precondition(tooOld.lastError?.contains("低于") == true, tooOld.lastError ?? "")
+        precondition(!tooOld.isRunning)
         let fixture: [String: Any] = [
             "outbounds": [["tag": "example", "type": "socks", "server": "::1", "server_port": 7890]],
             "dns": ["servers": [["type": "udp", "tag": "fixture-dns", "server": "1.1.1.1", "detour": "example"]]],
@@ -341,7 +359,7 @@ struct OperationChecks {
             try JSONSerialization.data(withJSONObject: realFixture).write(to: configURL)
             let real = ConductorController(configPath: configURL.path, singBoxPath: runtime)
             await real.checkRuntime()
-            precondition(real.runtimeHealth == .healthy, "Real check requires sing-box 1.14.0")
+            precondition(real.runtimeHealth == .healthy, "Real check requires sing-box \(ConductorController.minimumSupportedRuntimeVersion) or newer, got \(real.runtimeVersion)")
             let beforeBadURI = try Data(contentsOf: configURL)
             await real.importVLESSURI("vless://00000000-0000-0000-0000-000000000000@192.0.2.1:443?security=reality&security=reality", targetApp: "chatgpt")
             precondition(real.lastError?.contains("重复参数") == true)
@@ -453,7 +471,7 @@ struct OperationChecks {
             precondition(afterInvalidRestore == restored)
             precondition(beforeRestore != restored)
             print("Real restore checks passed: restore, backup, invalid candidate preservation")
-            print("Real sing-box 1.14.0 checks passed: HTTP default, UDP reject, deletion")
+            print("Real sing-box \(real.runtimeVersion) checks passed (minimum \(ConductorController.minimumSupportedRuntimeVersion)): HTTP default, UDP reject, deletion")
         }
     }
 }
